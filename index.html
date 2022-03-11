@@ -85,7 +85,14 @@
         </div>
         <div class="input-group mb-3">
             <button type="button" class="btn btn-outline-secondary" onclick="urlcreate()">生成跳转链接</button>
-            <input class="form-control" id="url" type="text" placeholder="链接生成" disabled>
+            <div class="input-group-text">
+                <div class=" form-check form-switch">
+                    <input id="isautorun" class="form-check-input" role="switch" type="checkbox">
+                    <label class="form-check-label" for="isautorun">autorun</label>
+                </div>
+
+            </div>
+            <input class="form-control" id="url" type="text" placeholder="https://" disabled>
             <button id="buttoncopy" type="button" class="btn btn-outline-secondary" data-bs-trigger="manual" data-bs-placement="bottom" title="复制成功" data-bs-toggle="tooltip" onclick="urlcopy()">复制</button>
 
         </div>
@@ -110,6 +117,8 @@
             if (p.has('referer')) $('#rpcreferer').val(p.get('referer'))
             if (p.has('maxconnect')) $('#rpcmaxconnect').val(p.get('maxconnect'))
             if (p.has('autorun')) sendrpc()
+            // 删除参数
+            window.history.replaceState({}, document.title, document.location.href.split("?")[0])
 
             //初始化tooltip
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -161,7 +170,7 @@
 
         function sendrpc()
         {
-            const urilist = $('#downloadurl').val().split('\n').map(x=>x.trip())
+            const urilist = $('#downloadurl').val().split('\n').map(x => x.trim())
 
             const wsurl = $('#rpchost').val().trim()
             const token = $('#rpctoken').val().trim()
@@ -214,6 +223,36 @@
                 }
             }
 
+            function sendMessage(msg)
+            {
+                waitForSocketConnection(ws, function()
+                {
+                    ws.send(msg);
+                });
+            }
+
+            function waitForSocketConnection(socket, callback)
+            {
+                setTimeout(
+                    function()
+                    {
+                        if (socket.readyState === 1)
+                        {
+                            console.log("Connection is made")
+                            if (callback != null)
+                            {
+                                callback();
+                            }
+                        }
+                        else
+                        {
+                            console.log("wait for connection...")
+                            waitForSocketConnection(socket, callback);
+                        }
+
+                    }, 100); // wait 100 milisecond for the connection...
+            }
+
             for (let uri of urilist)
             {
                 if (uri)
@@ -237,7 +276,7 @@
                     {
                         json.params.unshift("token:" + token); // 坑死了，必须要加在第一个
                     }
-                    ws.send(JSON.stringify(json));
+                    sendMessage(JSON.stringify(json));
                 }
             }
 
@@ -297,7 +336,30 @@
 
         function urlcreate()
         {
+            const uri = $('#downloadurl').val()
 
+            const wsurl = $('#rpchost').val().trim()
+            const token = $('#rpctoken').val().trim()
+            const fname = $('#rpcfilename').val().trim()
+            const dir = $('#rpcpath').val().trim()
+            const ua = $('#rpcua').val().trim()
+            const referer = $('#rpcreferer').val().trim() || "*"
+            const maxconnect = parseInt($('#rpcmaxconnect').val().trim() || '16')
+            const isautorun = $('#isautorun').prop('checked')
+
+            const obj = {
+                'wsurl': wsurl,
+                'token': token,
+                'fname': fname,
+                'dir': dir,
+                'ua': ua,
+                'uris': uri,
+                'referer': referer,
+                'maxconnect': maxconnect,
+            }
+            if (isautorun) obj.autorun = true
+            const p = new URLSearchParams(obj)
+            $('#url').val(location.origin + location.pathname + '?' + p.toString())
         }
     </script>
 </body>
