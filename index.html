@@ -19,25 +19,14 @@
         <div class="row mb-3 align-items-center">
             <div class="input-group">
                 <span class="input-group-text col-2">RPC地址</span>
-
                 <input class="form-control" id="rpchost" type="text">
             </div>
             <div class="col-auto">
                 <span class="form-text">
-                    <style>
-                        small::before {
-                            content: "推送aria2默认配置 ";
-                        }
-
-                        small+small::before {
-                            content: " 推送Motrix默认配置 ";
-                        }
-                    </style>
                     <small>
-                        <b>ws://localhost:6800/jsonrpc</b><br />
-                    </small>
-                    <small>
-                        <b>ws://localhost:16800/jsonrpc</b>
+                        推送aria2默认配置 <b>ws://localhost:6800/jsonrpc</b>
+                        <br />
+                        推送Motrix默认配置 <b>ws://localhost:16800/jsonrpc</b>
                     </small>
                 </span>
             </div>
@@ -65,18 +54,40 @@
                 <ul class="dropdown-menu" id="ualist" style="max-width: 300px;"></ul>
             </div>
         </div>
-        <div class="row mb-3 align-items-center" hidden>
-            <input class="form-control" id="rpcfilename" type="text" placeholder="rpcfilename">
-            <input class="form-control" id="rpcreferer" type="text" placeholder="rpcreferer">
-            <input class="form-control" id="rpcmaxconnect" type="text" placeholder="rpcmaxconnect">
-            <div class="col-auto">
-                <span class="form-text">
-                    <small>
-                        示例：<b>Cookie: a=b; c=d;</b>
-                    </small>
-                </span>
+        <div hidden>
+            <div class="row mb-3 align-items-center">
+                <div class="input-group">
+                    <span class="input-group-text col-2">文件名</span>
+                    <textarea class="form-control" id="rpcfilename" type="text" rows="5" placeholder="每行一个，留空使用服务器下载文件名，重名文件会直接覆盖"></textarea>
+                </div>
+            </div>
+            <div class="row mb-3 align-items-center">
+                <div class="input-group">
+                    <span class="input-group-text col-2">Referer</span>
+                    <input class="form-control" id="rpcreferer" type="text" placeholder="留空默认使用“*”（即下载链接）">
+                </div>
+            </div>
+            <div class="row mb-3 align-items-center">
+                <div class="input-group">
+                    <span class="input-group-text col-2">最大连接数</span>
+                    <input class="form-control" id="rpcmaxconnect" type="text" placeholder="留空默认为16">
+                </div>
+            </div>
+            <div class="row mb-3 align-items-center">
+                <div class="input-group">
+                    <span class="input-group-text col-2">Header</span>
+                    <input class="form-control" id="rpcheader" type="text" placeholder="">
+                </div>
+                <div class="col-auto">
+                    <span class="form-text">
+                        <small>
+                            示例(注意空格)：<b>Cookie: a=b; c=d;</b>
+                        </small>
+                    </span>
+                </div>
             </div>
         </div>
+
         <div class="row mb-3 align-items-center">
             <div class="input-group">
                 <span class="input-group-text col-2">下载链接</span>
@@ -170,11 +181,11 @@
 
         function sendrpc()
         {
-            const urilist = $('#downloadurl').val().split('\n').map(x => x.trim())
+            const urilist = $('#downloadurl').val().split('\n').filter(e => e).map(x => x.trim())
 
             const wsurl = $('#rpchost').val().trim()
             const token = $('#rpctoken').val().trim()
-            const filename = $('#rpcfilename').val().trim()
+            const filenamelist = $('#rpcfilename').val().split('\n').map(x => x.trim())
             const dir = $('#rpcpath').val().trim()
             const ua = $('#rpcua').val().trim()
             const referer = $('#rpcreferer').val().trim() || "*"
@@ -206,7 +217,7 @@
                 switch (received_msg.method)
                 {
                     case "aria2.onDownloadStart":
-                        Swal.fire('Aria2 发送成功', 'Aria2 已经开始下载！' + filename, 'success');
+                        Swal.fire('Aria2 发送成功', 'Aria2 已经开始下载！', 'success');
                         break;
 
                     case "aria2.onDownloadError":
@@ -253,21 +264,21 @@
                     }, 100); // wait 100 milisecond for the connection...
             }
 
-            for (let uri of urilist)
+            for (let urlindex in urilist)
             {
-                if (uri)
+                if (urilist[urlindex])
                 {
                     let json = {
                         "id": "pushrpc",
                         "jsonrpc": '2.0',
                         "method": 'aria2.addUri',
                         "params": [
-                            [uri],
+                            [urilist[urlindex]],
                             {
                                 "max-connection-per-server": maxconnect,
                                 "user-agent": ua,
                                 "referer": referer,
-                                "out": filename,
+                                "out": filenamelist[urlindex] ? filenamelist[urlindex] : '',
                                 "dir": dir
                             }
                         ],
