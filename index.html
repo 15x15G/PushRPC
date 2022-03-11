@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="//cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="//cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js"></script>
+
+    <title>RPC推送器</title>
+</head>
+
+<body>
+    <form class="m-5">
+        <div class="row mb-3 align-items-center">
+            <div class="input-group">
+                <span class="input-group-text col-2">RPC地址</span>
+
+                <input class="form-control" id="rpchost" type="text">
+            </div>
+            <div class="col-auto">
+                <span class="form-text">
+                    <style>
+                        small::before {
+                            content: "推送aria2默认配置 ";
+                        }
+
+                        small+small::before {
+                            content: " 推送Motrix默认配置 ";
+                        }
+                    </style>
+                    <small>
+                        <b>ws://localhost:6800/jsonrpc</b><br />
+                    </small>
+                    <small>
+                        <b>ws://localhost:16800/jsonrpc</b>
+                    </small>
+                </span>
+            </div>
+
+        </div>
+        <div class="row mb-3 align-items-center">
+            <div class="input-group">
+                <span class="input-group-text col-2">下载路径</span>
+                <input class="form-control" id="rpcpath" type="text" placeholder="留空使用aria2默认路径">
+            </div>
+        </div>
+        <div class="row mb-3 align-items-center">
+            <div class="input-group">
+                <span class="input-group-text col-2">Token</span>
+                <input class="form-control" id="rpctoken" type="text" placeholder="留空不使用">
+            </div>
+        </div>
+        <div class="row mb-3 align-items-center">
+            <div class="input-group">
+                <span class="input-group-text col-2">User-Agent</span>
+                <input class="form-control" id="rpcuseragent" type="text" placeholder="留空不使用">
+                <button class="btn btn-outline-secondary" type="button" onclick="deleteuseragent()">清空</button>
+                <button class="btn btn-outline-secondary" type="button" onclick="getuseragent()">浏览器</button>
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">历史</button>
+                <ul class="dropdown-menu" id="useragentlist" style="max-width: 300px;"></ul>
+            </div>
+        </div>
+        <div class="row mb-3 align-items-center">
+            <div class="input-group">
+                <span class="input-group-text col-2">下载链接</span>
+
+                <textarea class="form-control" id="downloadurl" type="text" rows="5"></textarea>
+            </div>
+
+        </div>
+        <button type="button" class="btn btn-primary m-3" onclick="sendrpc()">发送</button>
+        <button type="button" class="btn btn-secondary m-3" onclick="localStoragesave()">保存</button>
+    </form>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+
+    <script>
+        $(document).ready(() =>
+        {
+            localStorageload()
+        });
+
+        function localStorageload()
+        {
+            if (localStorage.getItem('aria2wsurl') !== null)
+                $('#rpchost').attr('value', localStorage.getItem('aria2wsurl'));
+            if (localStorage.getItem('aria2token') !== null)
+                $('#rpctoken').attr('value', localStorage.getItem('aria2token'));
+            if (localStorage.getItem('aria2dir') !== null)
+                $('#rpcpath').attr('value', localStorage.getItem('aria2dir'));
+            if (localStorage.getItem('aria2useragent') !== null)
+            {
+                const list = JSON.parse(localStorage.getItem('aria2useragent'))
+                $('#rpcuseragent').attr('value', list[0]);
+                $('#useragentlist').empty()
+                for (let i in list)
+                {
+                    if (!list[i]) continue;
+                    $('#useragentlist').append(
+                        $('<li>').append(
+                            $('<p>').attr('class', 'dropdown-item text-wrap').attr('type', 'button')
+                            .append(list[i])
+                            .click({ p: list[i] }, (e) =>
+                            {
+                                $('#rpcuseragent').val(e.data.p);
+                            })
+                        )
+                    );
+                }
+
+            }
+        }
+
+        function sendrpc()
+        {
+            const urilist = $('#downloadurl').val().split('\n')
+            for (let uri of urilist)
+            {
+                if (uri)
+                {
+                    addUri($('#rpchost').val(), uri, $('#rpctoken').val(), "", $('#rpcpath').val(), $('#rpcuseragent').val())
+                }
+            }
+        }
+
+        function addUri(wsurl, uri, token = "", filename = "", dir, useragent, referer = "*")
+        {
+            var options = {
+                "max-connection-per-server": "16",
+                "user-agent": useragent,
+                "referer": referer
+            };
+            if (filename != "")
+            {
+                options.out = filename;
+            }
+
+            json = {
+                "id": "pushrpc",
+                "jsonrpc": '2.0',
+                "method": 'aria2.addUri',
+                "params": [
+                    [uri], options
+                ],
+            };
+
+            if (token != "")
+            {
+                json.params.unshift("token:" + token); // 坑死了，必须要加在第一个
+            }
+
+            patt = /^wss?\:\/\/(((([A-Za-z0-9]+[A-Za-z0-9\-]+[A-Za-z0-9]+)|([A-Za-z0-9]+))(\.(([A-Za-z0-9]+[A-Za-z0-9\-]+[A-Za-z0-9]+)|([A-Za-z0-9]+)))*(\.[A-Za-z0-9]{2,10}))|(localhost)|((([01]?\d?\d)|(2[0-4]\d)|(25[0-5]))(\.([01]?\d?\d)|(2[0-4]\d)|(25[0-5])){3})|((\[[A-Za-z0-9:]{2,39}\])|([A-Za-z0-9:]{2,39})))(\:\d{1,5})?(\/.*)?$/;
+            if (!patt.test(wsurl))
+            {
+                Swal.fire('地址错误', 'WebSocket 地址不符合验证规则，请检查是否填写正确！', 'error');
+                return;
+            }
+            var ws = new WebSocket(wsurl);
+
+            ws.onerror = event =>
+            {
+                console.log(event);
+                Swal.fire('连接错误', 'Aria2 连接错误，请打开控制台查看详情！', 'error');
+            };
+            ws.onopen = () => { ws.send(JSON.stringify(json)); }
+
+            ws.onmessage = event =>
+            {
+                console.log(event);
+                received_msg = JSON.parse(event.data);
+                if (received_msg.error !== undefined)
+                {
+                    if (received_msg.error.code === 1) Swal.fire('通过RPC连接失败', '请打开控制台查看详细错误信息，返回信息：' + received_msg.error.message, 'error');
+                }
+                switch (received_msg.method)
+                {
+                    case "aria2.onDownloadStart":
+                        Swal.fire('Aria2 发送成功', 'Aria2 已经开始下载！' + filename, 'success');
+                        break;
+
+                    case "aria2.onDownloadError":
+                        ;
+                        Swal.fire('下载错误', 'Aria2 下载错误！', 'error');
+                        break;
+
+                    case "aria2.onDownloadComplete":
+                        Swal.fire('下载完成', 'Aria2 下载完成！', 'success');
+                        break;
+
+                    default:
+                        break;
+                }
+
+                // version = received_msg.result.version;
+            };
+        }
+
+        function localStoragesave()
+        {
+            const rpchost = $('#rpchost').val()
+            const rpcpath = $('#rpcpath').val()
+            const rpctoken = $('#rpctoken').val()
+            const rpcuseragent = $('#rpcuseragent').val()
+            localStorage.setItem("aria2wsurl", rpchost);
+            localStorage.setItem("aria2dir", rpcpath);
+            localStorage.setItem("aria2token", rpctoken);
+
+            const agentstring = localStorage.getItem("aria2useragent");
+
+            let agentlist = ['']
+            if (agentstring)
+            {
+                agentlist = JSON.parse(agentstring)
+            }
+            if (agentlist.lastIndexOf(rpcuseragent) > -1)
+                agentlist.splice(agentlist.lastIndexOf(rpcuseragent), 1);
+            agentlist.unshift(rpcuseragent)
+            const newagentstring = JSON.stringify(agentlist)
+            localStorage.setItem("aria2useragent", newagentstring);
+            localStorageload()
+        }
+
+        function deleteuseragent()
+        {
+            $('#rpcuseragent').val('');
+        }
+
+        function getuseragent()
+        {
+            $('#rpcuseragent').val(navigator.userAgent);
+        }
+    </script>
+</body>
+
+</html>
