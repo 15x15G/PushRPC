@@ -97,7 +97,9 @@
     <script>
         $(document).ready(() =>
         {
+            //读取localStorage
             localStorageload()
+            //读取URLSearchParams
             const p = new URLSearchParams(window.location.search)
             if (p.has('wsurl')) $('#rpchost').val(p.get('wsurl'))
             if (p.has('uris')) $('#downloadurl').val(p.get('uris'))
@@ -109,12 +111,14 @@
             if (p.has('maxconnect')) $('#rpcmaxconnect').val(p.get('maxconnect'))
             if (p.has('autorun')) sendrpc()
 
+            //初始化tooltip
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
             var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl)
             {
                 return new bootstrap.Tooltip(tooltipTriggerEl)
             })
 
+            //tooltip自动隐藏
             $(document).on('shown.bs.tooltip', function(e)
             {
                 setTimeout(function()
@@ -157,15 +161,15 @@
 
         function sendrpc()
         {
-            const urilist = $('#downloadurl').val().split('\n')
+            const urilist = $('#downloadurl').val().split('\n').map(x=>x.trip())
 
-            const wsurl = $('#rpchost').val()
-            const token = $('#rpctoken').val()
-            const filename = $('#rpcfilename').val()
-            const dir = $('#rpcpath').val()
-            const ua = $('#rpcua').val()
-            const referer = $('#rpcreferer').val() || "*"
-            const maxconnect = parseInt($('#rpcmaxconnect').val() || '16')
+            const wsurl = $('#rpchost').val().trim()
+            const token = $('#rpctoken').val().trim()
+            const filename = $('#rpcfilename').val().trim()
+            const dir = $('#rpcpath').val().trim()
+            const ua = $('#rpcua').val().trim()
+            const referer = $('#rpcreferer').val().trim() || "*"
+            const maxconnect = parseInt($('#rpcmaxconnect').val().trim() || '16')
 
             patt = /^wss?\:\/\/(((([A-Za-z0-9]+[A-Za-z0-9\-]+[A-Za-z0-9]+)|([A-Za-z0-9]+))(\.(([A-Za-z0-9]+[A-Za-z0-9\-]+[A-Za-z0-9]+)|([A-Za-z0-9]+)))*(\.[A-Za-z0-9]{2,10}))|(localhost)|((([01]?\d?\d)|(2[0-4]\d)|(25[0-5]))(\.([01]?\d?\d)|(2[0-4]\d)|(25[0-5])){3})|((\[[A-Za-z0-9:]{2,39}\])|([A-Za-z0-9:]{2,39})))(\:\d{1,5})?(\/.*)?$/;
             if (!patt.test(wsurl))
@@ -241,10 +245,10 @@
 
         function localStoragesave()
         {
-            const rpchost = $('#rpchost').val()
-            const rpcpath = $('#rpcpath').val()
-            const rpctoken = $('#rpctoken').val()
-            const rpcua = $('#rpcua').val()
+            const rpchost = $('#rpchost').val().trim()
+            const rpcpath = $('#rpcpath').val().trim()
+            const rpctoken = $('#rpctoken').val().trim()
+            const rpcua = $('#rpcua').val().trim()
             localStorage.setItem("aria2wsurl", rpchost);
             localStorage.setItem("aria2dir", rpcpath);
             localStorage.setItem("aria2token", rpctoken);
@@ -261,8 +265,9 @@
             list.unshift(rpcua)
             const newuastring = JSON.stringify(list)
             localStorage.setItem("aria2ua", newuastring);
+            //保存后重新读取刷新列表
             localStorageload()
-
+            //触发tooltip
             var exampleTriggerEl = document.getElementById('buttonsave')
             var tooltip = bootstrap.Tooltip.getInstance(exampleTriggerEl)
             tooltip.show()
@@ -284,6 +289,7 @@
             copyText.select();
             copyText.setSelectionRange(0, 99999);
             navigator.clipboard.writeText(copyText.value);
+            //触发tooltip
             var exampleTriggerEl = document.getElementById('buttoncopy')
             var tooltip = bootstrap.Tooltip.getInstance(exampleTriggerEl)
             tooltip.show()
@@ -291,7 +297,7 @@
 
         function urlcreate()
         {
-            
+
         }
     </script>
 </body>
