@@ -86,11 +86,11 @@
         <div class="input-group mb-3">
             <button type="button" class="btn btn-outline-secondary" onclick="urlcreate()">生成跳转链接</button>
             <input class="form-control" id="url" type="text" placeholder="链接生成" disabled>
-            <button type="button" class="btn btn-outline-secondary" onclick="urlcopy()">复制</button>
+            <button id="buttoncopy" type="button" class="btn btn-outline-secondary" data-bs-trigger="manual" data-bs-placement="bottom" title="复制成功" data-bs-toggle="tooltip" onclick="urlcopy()">复制</button>
 
         </div>
         <button type="button" class="btn btn-primary m-3" onclick="sendrpc()">发送</button>
-        <button type="button" class="btn btn-secondary m-3" onclick="localStoragesave()">保存</button>
+        <button id="buttonsave" type="button" class="btn btn-secondary m-3" data-bs-trigger="manual" data-bs-placement="bottom" title="保存成功" data-bs-toggle="tooltip" onclick="localStoragesave()">保存</button>
     </form>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
 
@@ -108,6 +108,20 @@
             if (p.has('referer')) $('#rpcreferer').val(p.get('referer'))
             if (p.has('maxconnect')) $('#rpcmaxconnect').val(p.get('maxconnect'))
             if (p.has('autorun')) sendrpc()
+
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl)
+            {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            })
+
+            $(document).on('shown.bs.tooltip', function(e)
+            {
+                setTimeout(function()
+                {
+                    $(e.target).tooltip('hide');
+                }, 1000);
+            });
         });
 
         function localStorageload()
@@ -248,6 +262,10 @@
             const newuastring = JSON.stringify(list)
             localStorage.setItem("aria2ua", newuastring);
             localStorageload()
+
+            var exampleTriggerEl = document.getElementById('buttonsave')
+            var tooltip = bootstrap.Tooltip.getInstance(exampleTriggerEl)
+            tooltip.show()
         }
 
         function deleteua()
@@ -258,6 +276,22 @@
         function getua()
         {
             $('#rpcua').val(navigator.userAgent);
+        }
+
+        function urlcopy()
+        {
+            var copyText = document.getElementById("url");
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(copyText.value);
+            var exampleTriggerEl = document.getElementById('buttoncopy')
+            var tooltip = bootstrap.Tooltip.getInstance(exampleTriggerEl)
+            tooltip.show()
+        }
+
+        function urlcreate()
+        {
+            
         }
     </script>
 </body>
