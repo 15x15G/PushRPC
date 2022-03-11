@@ -58,19 +58,35 @@
         <div class="row mb-3 align-items-center">
             <div class="input-group">
                 <span class="input-group-text col-2">User-Agent</span>
-                <input class="form-control" id="rpcuseragent" type="text" placeholder="留空不使用">
-                <button class="btn btn-outline-secondary" type="button" onclick="deleteuseragent()">清空</button>
-                <button class="btn btn-outline-secondary" type="button" onclick="getuseragent()">浏览器</button>
+                <input class="form-control" id="rpcua" type="text" placeholder="留空不使用">
+                <button class="btn btn-outline-secondary" type="button" onclick="deleteua()">清空</button>
+                <button class="btn btn-outline-secondary" type="button" onclick="getua()">浏览器</button>
                 <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">历史</button>
-                <ul class="dropdown-menu" id="useragentlist" style="max-width: 300px;"></ul>
+                <ul class="dropdown-menu" id="ualist" style="max-width: 300px;"></ul>
+            </div>
+        </div>
+        <div class="row mb-3 align-items-center" hidden>
+            <input class="form-control" id="rpcfilename" type="text" placeholder="rpcfilename">
+            <input class="form-control" id="rpcreferer" type="text" placeholder="rpcreferer">
+            <input class="form-control" id="rpcmaxconnect" type="text" placeholder="rpcmaxconnect">
+            <div class="col-auto">
+                <span class="form-text">
+                    <small>
+                        示例：<b>Cookie: a=b; c=d;</b>
+                    </small>
+                </span>
             </div>
         </div>
         <div class="row mb-3 align-items-center">
             <div class="input-group">
                 <span class="input-group-text col-2">下载链接</span>
-
-                <textarea class="form-control" id="downloadurl" type="text" rows="5"></textarea>
+                <textarea class="form-control" id="downloadurl" type="text" rows="5" placeholder="每行一个链接"></textarea>
             </div>
+        </div>
+        <div class="input-group mb-3">
+            <button type="button" class="btn btn-outline-secondary" onclick="urlcreate()">生成跳转链接</button>
+            <input class="form-control" id="url" type="text" placeholder="链接生成" disabled>
+            <button type="button" class="btn btn-outline-secondary" onclick="urlcopy()">复制</button>
 
         </div>
         <button type="button" class="btn btn-primary m-3" onclick="sendrpc()">发送</button>
@@ -82,6 +98,16 @@
         $(document).ready(() =>
         {
             localStorageload()
+            const p = new URLSearchParams(window.location.search)
+            if (p.has('wsurl')) $('#rpchost').val(p.get('wsurl'))
+            if (p.has('uris')) $('#downloadurl').val(p.get('uris'))
+            if (p.has('token')) $('#rpctoken').val(p.get('token'))
+            if (p.has('fname')) $('#rpcfilename').val(p.get('fname'))
+            if (p.has('dir')) $('#rpcpath').val(p.get('dir'))
+            if (p.has('ua')) $('#rpcua').val(p.get('ua'))
+            if (p.has('referer')) $('#rpcreferer').val(p.get('referer'))
+            if (p.has('maxconnect')) $('#rpcmaxconnect').val(p.get('maxconnect'))
+            if (p.has('autorun')) sendrpc()
         });
 
         function localStorageload()
@@ -92,21 +118,21 @@
                 $('#rpctoken').attr('value', localStorage.getItem('aria2token'));
             if (localStorage.getItem('aria2dir') !== null)
                 $('#rpcpath').attr('value', localStorage.getItem('aria2dir'));
-            if (localStorage.getItem('aria2useragent') !== null)
+            if (localStorage.getItem('aria2ua') !== null)
             {
-                const list = JSON.parse(localStorage.getItem('aria2useragent'))
-                $('#rpcuseragent').attr('value', list[0]);
-                $('#useragentlist').empty()
+                const list = JSON.parse(localStorage.getItem('aria2ua'))
+                $('#rpcua').attr('value', list[0]);
+                $('#ualist').empty()
                 for (let i in list)
                 {
                     if (!list[i]) continue;
-                    $('#useragentlist').append(
+                    $('#ualist').append(
                         $('<li>').append(
-                            $('<p>').attr('class', 'dropdown-item text-wrap').attr('type', 'button')
+                            $('<p>').attr('class', 'dropdown-item text-truncate').attr('type', 'button')
                             .append(list[i])
                             .click({ p: list[i] }, (e) =>
                             {
-                                $('#rpcuseragent').val(e.data.p);
+                                $('#rpcua').val(e.data.p);
                             })
                         )
                     );
@@ -118,40 +144,14 @@
         function sendrpc()
         {
             const urilist = $('#downloadurl').val().split('\n')
-            for (let uri of urilist)
-            {
-                if (uri)
-                {
-                    addUri($('#rpchost').val(), uri, $('#rpctoken').val(), "", $('#rpcpath').val(), $('#rpcuseragent').val())
-                }
-            }
-        }
 
-        function addUri(wsurl, uri, token = "", filename = "", dir, useragent, referer = "*")
-        {
-            var options = {
-                "max-connection-per-server": "16",
-                "user-agent": useragent,
-                "referer": referer
-            };
-            if (filename != "")
-            {
-                options.out = filename;
-            }
-
-            json = {
-                "id": "pushrpc",
-                "jsonrpc": '2.0',
-                "method": 'aria2.addUri',
-                "params": [
-                    [uri], options
-                ],
-            };
-
-            if (token != "")
-            {
-                json.params.unshift("token:" + token); // 坑死了，必须要加在第一个
-            }
+            const wsurl = $('#rpchost').val()
+            const token = $('#rpctoken').val()
+            const filename = $('#rpcfilename').val()
+            const dir = $('#rpcpath').val()
+            const ua = $('#rpcua').val()
+            const referer = $('#rpcreferer').val() || "*"
+            const maxconnect = parseInt($('#rpcmaxconnect').val() || '16')
 
             patt = /^wss?\:\/\/(((([A-Za-z0-9]+[A-Za-z0-9\-]+[A-Za-z0-9]+)|([A-Za-z0-9]+))(\.(([A-Za-z0-9]+[A-Za-z0-9\-]+[A-Za-z0-9]+)|([A-Za-z0-9]+)))*(\.[A-Za-z0-9]{2,10}))|(localhost)|((([01]?\d?\d)|(2[0-4]\d)|(25[0-5]))(\.([01]?\d?\d)|(2[0-4]\d)|(25[0-5])){3})|((\[[A-Za-z0-9:]{2,39}\])|([A-Za-z0-9:]{2,39})))(\:\d{1,5})?(\/.*)?$/;
             if (!patt.test(wsurl))
@@ -159,6 +159,7 @@
                 Swal.fire('地址错误', 'WebSocket 地址不符合验证规则，请检查是否填写正确！', 'error');
                 return;
             }
+
             var ws = new WebSocket(wsurl);
 
             ws.onerror = event =>
@@ -166,7 +167,6 @@
                 console.log(event);
                 Swal.fire('连接错误', 'Aria2 连接错误，请打开控制台查看详情！', 'error');
             };
-            ws.onopen = () => { ws.send(JSON.stringify(json)); }
 
             ws.onmessage = event =>
             {
@@ -194,9 +194,35 @@
                     default:
                         break;
                 }
+            }
 
-                // version = received_msg.result.version;
-            };
+            for (let uri of urilist)
+            {
+                if (uri)
+                {
+                    let json = {
+                        "id": "pushrpc",
+                        "jsonrpc": '2.0',
+                        "method": 'aria2.addUri',
+                        "params": [
+                            [uri],
+                            {
+                                "max-connection-per-server": maxconnect,
+                                "user-agent": ua,
+                                "referer": referer,
+                                "out": filename,
+                                "dir": dir
+                            }
+                        ],
+                    };
+                    if (token)
+                    {
+                        json.params.unshift("token:" + token); // 坑死了，必须要加在第一个
+                    }
+                    ws.send(JSON.stringify(json));
+                }
+            }
+
         }
 
         function localStoragesave()
@@ -204,34 +230,34 @@
             const rpchost = $('#rpchost').val()
             const rpcpath = $('#rpcpath').val()
             const rpctoken = $('#rpctoken').val()
-            const rpcuseragent = $('#rpcuseragent').val()
+            const rpcua = $('#rpcua').val()
             localStorage.setItem("aria2wsurl", rpchost);
             localStorage.setItem("aria2dir", rpcpath);
             localStorage.setItem("aria2token", rpctoken);
 
-            const agentstring = localStorage.getItem("aria2useragent");
+            const uastring = localStorage.getItem("aria2ua");
 
-            let agentlist = ['']
-            if (agentstring)
+            let list = ['']
+            if (uastring)
             {
-                agentlist = JSON.parse(agentstring)
+                list = JSON.parse(uastring)
             }
-            if (agentlist.lastIndexOf(rpcuseragent) > -1)
-                agentlist.splice(agentlist.lastIndexOf(rpcuseragent), 1);
-            agentlist.unshift(rpcuseragent)
-            const newagentstring = JSON.stringify(agentlist)
-            localStorage.setItem("aria2useragent", newagentstring);
+            if (list.lastIndexOf(rpcua) > -1)
+                list.splice(list.lastIndexOf(rpcua), 1);
+            list.unshift(rpcua)
+            const newuastring = JSON.stringify(list)
+            localStorage.setItem("aria2ua", newuastring);
             localStorageload()
         }
 
-        function deleteuseragent()
+        function deleteua()
         {
-            $('#rpcuseragent').val('');
+            $('#rpcua').val('');
         }
 
-        function getuseragent()
+        function getua()
         {
-            $('#rpcuseragent').val(navigator.userAgent);
+            $('#rpcua').val(navigator.userAgent);
         }
     </script>
 </body>
